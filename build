@@ -1,0 +1,66 @@
+#!/bin/bash
+
+project=$1
+
+# package
+pkg_home_dir=$(dirname $0)
+pkg_bin_dir=$pkg_home_dir/bin
+pkg_conf_dir=$pkg_home_dir/conf
+pkg_share_dir=$pkg_home_dir/share
+pkg_env_file=$pkg_home_dir/env.$project.conf
+pkg_conf_file=$pkg_conf_dir/proxy.properties
+pkg_server_file=$pkg_bin_dir/server
+hostname=$(hostname)
+
+source $pkg_env_file
+
+# dest
+bin_dir=$home/bin
+conf_dir=$home/conf
+log_dir=$home/logs
+ssl_dir=$home/ssl
+conf_file=$conf_dir/proxy.properties
+server_file=$bin_dir/server
+
+# build directories
+function make_dirs() {
+	mkdir -p $home
+
+	cp -r $pkg_bin_dir $home/
+	cp -r $pkg_conf_dir $home/
+	cp -r $pkg_share_dir $home/
+
+	# link to host log directory
+	if [[ -d $log_dir ]]; then
+		rm -f $log_dir
+	fi
+	ln -s $log_src_dir $log_dir
+
+	# create ssl directory
+	mkdir $ssl_dir
+
+	echo "directories were created"
+}
+
+# build properties
+function make_conf() {
+	sed -e "s;^schema.registry.url=;schema.registry.url=$schema_registry_urls;g" \
+	-e "s;^zookeeper.connect=;zookeeper.connect=$zookeeper_urls;g" \
+	$pkg_conf_file > $conf_file
+	#-e "s;^ssl.keystore.location=;ssl.keystore.location=$ssl_dir/keystore;g" \
+	#-e "s;^ssl.truststore.location=;ssl.truststore.location=$ssl_dir/keystore;g" \
+
+	echo "properties file was created"
+}
+
+# build server file
+function make_server() {
+	sed "s;^HEAP_OPTS=.*;HEAP_OPTS=\"-Xmx$heap_size -Xms$heap_size\";g" $pkg_server_file > $server_file
+
+	echo "server file was created"
+}
+
+
+make_dirs
+make_conf
+make_server
